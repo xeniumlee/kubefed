@@ -47,7 +47,8 @@ type KubeFedClusterReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
 func (r *KubeFedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logr := log.FromContext(ctx)
+	logr.Info("KubeFedCluster", req.NamespacedName)
 
 	// your logic here
 

@@ -23,13 +23,25 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+type Cluster struct {
+	Name string `json:"name"`
+}
+
+type Placement struct {
+	Clusters []Cluster `json:"clusters,omitempty"`
+}
+
 // FederatedObjectSpec defines the desired state of FederatedObject
 type FederatedObjectSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of FederatedObject. Edit federatedobject_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Placement Placement `json:"placement,omitempty"`
+}
+
+type ClusterStatus struct {
+	Name      string      `json:"name"`
+	Timestamp metav1.Time `json:"timestamp,omitempty"`
 }
 
 // FederatedObjectStatus defines the observed state of FederatedObject
@@ -46,8 +58,8 @@ type FederatedObject struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   FederatedObjectSpec   `json:"spec,omitempty"`
-	Status FederatedObjectStatus `json:"status,omitempty"`
+	Spec   FederatedObjectSpec `json:"spec,omitempty"`
+	Status []ClusterStatus     `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true

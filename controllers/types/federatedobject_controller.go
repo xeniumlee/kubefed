@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	typesv1beta1 "github.com/xeniumlee/kubefed/apis/types/v1beta1"
@@ -47,9 +48,26 @@ type FederatedObjectReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
 func (r *FederatedObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
-	// your logic here
+	obj := &typesv1beta1.FederatedObject{}
+	if err := r.Get(ctx, req.NamespacedName, obj); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	clusters := obj.Spec.Placement.Clusters
+
+	if obj.Status == nil {
+		obj.Status = make([]typesv1beta1.ClusterStatus, len(clusters))
+		for i, c := range clusters {
+			obj.Status[i] = typesv1beta1.ClusterStatus{
+				Name: c.Name,
+			}
+		}
+		err := r.Status().Update(ctx, obj)
+		logger.Info("Got", "target clusters", clusters, "status", obj.Status)
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }
@@ -58,5 +76,6 @@ func (r *FederatedObjectReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 func (r *FederatedObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&typesv1beta1.FederatedObject{}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 5}).
 		Complete(r)
 }
