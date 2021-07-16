@@ -1,0 +1,11 @@
+apiVersion: types.kubefed.io/v1beta1
+kind: FederatedObject
+metadata:
+  name: federatedobject-1
+  namespace: test
+spec:
+  placement:
+    clusters:
+    - name: cluster-1
+    - name: cluster-2
+    - name: cluster-3

@@ -1,0 +1,24 @@
+# permissions for end users to edit kubefedclusters.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubefedcluster-editor-role
+rules:
+- apiGroups:
+  - core.kubefed.io
+  resources:
+  - kubefedclusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.kubefed.io
+  resources:
+  - kubefedclusters/status
+  verbs:
+  - get

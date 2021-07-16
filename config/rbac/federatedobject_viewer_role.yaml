@@ -1,0 +1,20 @@
+# permissions for end users to view federatedobjects.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: federatedobject-viewer-role
+rules:
+- apiGroups:
+  - types.kubefed.io
+  resources:
+  - federatedobjects
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - types.kubefed.io
+  resources:
+  - federatedobjects/status
+  verbs:
+  - get

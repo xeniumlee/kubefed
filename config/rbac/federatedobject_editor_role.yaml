@@ -1,0 +1,24 @@
+# permissions for end users to edit federatedobjects.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: federatedobject-editor-role
+rules:
+- apiGroups:
+  - types.kubefed.io
+  resources:
+  - federatedobjects
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - types.kubefed.io
+  resources:
+  - federatedobjects/status
+  verbs:
+  - get

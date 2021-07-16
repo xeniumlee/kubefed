@@ -1,0 +1,26 @@
+domain: kubefed.io
+layout:
+- go.kubebuilder.io/v3
+multigroup: true
+projectName: kubefed
+repo: github.com/xeniumlee/kubefed
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: kubefed.io
+  group: types
+  kind: FederatedObject
+  path: github.com/xeniumlee/kubefed/apis/types/v1beta1
+  version: v1beta1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: kubefed.io
+  group: core
+  kind: KubeFedCluster
+  path: github.com/xeniumlee/kubefed/apis/core/v1beta1
+  version: v1beta1
+version: "3"
