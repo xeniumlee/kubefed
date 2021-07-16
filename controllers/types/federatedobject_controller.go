@@ -26,12 +26,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	typesv1beta1 "github.com/xeniumlee/kubefed/apis/types/v1beta1"
+	"github.com/xeniumlee/kubefed/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // FederatedObjectReconciler reconciles a FederatedObject object
 type FederatedObjectReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme      *runtime.Scheme
+	ClusterName string
 }
 
 //+kubebuilder:rbac:groups=types.kubefed.io,resources=federatedobjects,verbs=get;list;watch;create;update;patch;delete
@@ -55,21 +58,43 @@ func (r *FederatedObjectReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	clusters := obj.Spec.Placement.Clusters
+	if r.ClusterName == util.FederationClusterName {
 
-	if obj.Status == nil {
-		obj.Status = make([]typesv1beta1.ClusterStatus, len(clusters))
+		clusters := obj.Spec.Placement.Clusters
+
+		if obj.Status == nil {
+			obj.Status = make([]typesv1beta1.ClusterStatus, len(clusters))
+			for i, c := range clusters {
+				obj.Status[i] = typesv1beta1.ClusterStatus{
+					Name: c.Name,
+				}
+			}
+			err := r.Status().Update(ctx, obj)
+			logger.Info("Got", "target clusters", clusters, "status", obj.Status)
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{}, nil
+
+	} else {
+
+		if obj.Status == nil {
+			return ctrl.Result{}, nil
+		}
+
+		clusters := obj.Spec.Placement.Clusters
 		for i, c := range clusters {
-			obj.Status[i] = typesv1beta1.ClusterStatus{
-				Name: c.Name,
+			if c.Name == r.ClusterName && obj.Status[i].Timestamp.IsZero() {
+				obj.Status[i].Timestamp = metav1.Now()
+
+				err := r.Status().Update(ctx, obj)
+				logger.Info("Update timestamp", "cluster", r.ClusterName)
+				return ctrl.Result{}, err
 			}
 		}
-		err := r.Status().Update(ctx, obj)
-		logger.Info("Got", "target clusters", clusters, "status", obj.Status)
-		return ctrl.Result{}, err
-	}
 
-	return ctrl.Result{}, nil
+		return ctrl.Result{}, nil
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.
