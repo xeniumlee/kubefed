@@ -33,8 +33,9 @@ import (
 // FederatedObjectReconciler reconciles a FederatedObject object
 type FederatedObjectReconciler struct {
 	client.Client
-	Scheme      *runtime.Scheme
-	ClusterName string
+	Scheme            *runtime.Scheme
+	ClusterName       string
+	TargetClusterName string
 }
 
 //+kubebuilder:rbac:groups=types.kubefed.io,resources=federatedobjects,verbs=get;list;watch;create;update;patch;delete
@@ -60,23 +61,38 @@ func (r *FederatedObjectReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	if r.ClusterName == util.FederationClusterName {
 
-		clusters := obj.Spec.Placement.Clusters
+		// federation cluster
 
-		if obj.Status == nil {
-			obj.Status = make([]typesv1beta1.ClusterStatus, len(clusters))
-			for i, c := range clusters {
-				obj.Status[i] = typesv1beta1.ClusterStatus{
-					Name: c.Name,
+		if r.TargetClusterName != "" {
+
+			// watch member cluster
+
+			return ctrl.Result{}, nil
+
+		} else {
+
+			// watch federation cluster
+
+			clusters := obj.Spec.Placement.Clusters
+
+			if obj.Status == nil {
+				obj.Status = make([]typesv1beta1.ClusterStatus, len(clusters))
+				for i, c := range clusters {
+					obj.Status[i] = typesv1beta1.ClusterStatus{
+						Name: c.Name,
+					}
 				}
+				err := r.Status().Update(ctx, obj)
+				logger.Info("Got", "target clusters", clusters, "status", obj.Status)
+				return ctrl.Result{}, err
 			}
-			err := r.Status().Update(ctx, obj)
-			logger.Info("Got", "target clusters", clusters, "status", obj.Status)
-			return ctrl.Result{}, err
+
+			return ctrl.Result{}, nil
 		}
 
-		return ctrl.Result{}, nil
-
 	} else {
+
+		// member cluster
 
 		if obj.Status == nil {
 			return ctrl.Result{}, nil

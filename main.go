@@ -35,7 +35,10 @@ import (
 	typesv1beta1 "github.com/xeniumlee/kubefed/apis/types/v1beta1"
 	corecontrollers "github.com/xeniumlee/kubefed/controllers/core"
 	typescontrollers "github.com/xeniumlee/kubefed/controllers/types"
+
 	//+kubebuilder:scaffold:imports
+
+	"github.com/xeniumlee/kubefed/util"
 )
 
 var (
@@ -94,12 +97,16 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "FederatedObject")
 		os.Exit(1)
 	}
-	if err = (&corecontrollers.KubeFedClusterReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "KubeFedCluster")
-		os.Exit(1)
+
+	if clusterName == util.FederationClusterName {
+		if err = (&corecontrollers.KubeFedClusterReconciler{
+			Client:    mgr.GetClient(),
+			Scheme:    mgr.GetScheme(),
+			Namespace: namespace,
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "KubeFedCluster")
+			os.Exit(1)
+		}
 	}
 	//+kubebuilder:scaffold:builder
 

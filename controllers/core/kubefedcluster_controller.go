@@ -25,12 +25,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	corev1beta1 "github.com/xeniumlee/kubefed/apis/core/v1beta1"
+	typescontrollers "github.com/xeniumlee/kubefed/controllers/types"
+	"github.com/xeniumlee/kubefed/util"
 )
 
 // KubeFedClusterReconciler reconciles a KubeFedCluster object
 type KubeFedClusterReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme    *runtime.Scheme
+	Namespace string
 }
 
 //+kubebuilder:rbac:groups=core.kubefed.io,resources=kubefedclusters,verbs=get;list;watch;create;update;patch;delete
@@ -47,10 +50,32 @@ type KubeFedClusterReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
 func (r *KubeFedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logr := log.FromContext(ctx)
-	logr.Info("KubeFedCluster", req.NamespacedName)
+	logger := log.FromContext(ctx)
 
-	// your logic here
+	obj := &corev1beta1.KubeFedCluster{}
+	if err := r.Get(ctx, req.NamespacedName, obj); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	mgr, err := util.NewManager(obj, r.Namespace, r.Client, r.Scheme)
+	if err != nil {
+		logger.Error(err, "Unable to create manager", "cluster", obj.ClusterName)
+		return ctrl.Result{}, err
+	}
+
+	util.AddclusterClient(obj.ClusterName, mgr.GetClient())
+
+	if err = (&typescontrollers.FederatedObjectReconciler{
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
+		ClusterName:       util.FederationClusterName,
+		TargetClusterName: obj.ClusterName,
+	}).SetupWithManager(mgr); err != nil {
+		logger.Error(err, "Unable to create controller", "cluster", obj.ClusterName)
+		return ctrl.Result{}, err
+	}
+
+	go mgr.Start(context.TODO())
 
 	return ctrl.Result{}, nil
 }

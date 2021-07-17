@@ -67,10 +67,13 @@ kubefedctl --host-cluster-context kind-cluster-fed join cluster-3 --cluster-cont
 
 kubectl --context kind-cluster-fed -n test get kubefedclusters
 
-## Install federatedobject to federatioin cluster
-kubectl apply -f config/samples/types_v1beta1_federatedobject.yaml
+kubectl --context kind-cluster-1 apply -f config/crd/bases/types.kubefed.io_federatedobjects.yaml
+kubectl --context kind-cluster-2 apply -f config/crd/bases/types.kubefed.io_federatedobjects.yaml
+kubectl --context kind-cluster-3 apply -f config/crd/bases/types.kubefed.io_federatedobjects.yaml
 
-kubectl -n test delete federatedobjects.types.kubefed.io federatedobject-1
+kubectl --context kind-cluster-1 apply -f config/samples/types_v1beta1_federatedobject.yaml
+
+kubectl --context kind-cluster-1 -n test delete federatedobjects.types.kubefed.io federatedobject-1
 
 
 ./bin/manager --kubeconfig /root/.kube/config --clustername cluster-fed
