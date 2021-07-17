@@ -99,6 +99,8 @@ func main() {
 	}
 
 	if clusterName == util.FederationClusterName {
+		util.AddclusterClient(clusterName, mgr.GetClient())
+
 		if err = (&corecontrollers.KubeFedClusterReconciler{
 			Client:    mgr.GetClient(),
 			Scheme:    mgr.GetScheme(),

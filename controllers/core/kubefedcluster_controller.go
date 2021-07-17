@@ -63,7 +63,7 @@ func (r *KubeFedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
-	util.AddclusterClient(obj.ClusterName, mgr.GetClient())
+	util.AddclusterClient(obj.Name, mgr.GetClient())
 
 	if err = (&typescontrollers.FederatedObjectReconciler{
 		Client:            mgr.GetClient(),

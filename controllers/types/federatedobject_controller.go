@@ -67,24 +67,23 @@ func (r *FederatedObjectReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 			// watch member cluster
 
+			if worker := util.GetSyncworker(req.NamespacedName); worker != nil {
+				worker.Notify(r.TargetClusterName, obj)
+			}
+
 			return ctrl.Result{}, nil
 
 		} else {
 
 			// watch federation cluster
 
-			clusters := obj.Spec.Placement.Clusters
-
 			if obj.Status == nil {
-				obj.Status = make([]typesv1beta1.ClusterStatus, len(clusters))
-				for i, c := range clusters {
-					obj.Status[i] = typesv1beta1.ClusterStatus{
-						Name: c.Name,
-					}
-				}
-				err := r.Status().Update(ctx, obj)
-				logger.Info("Got", "target clusters", clusters, "status", obj.Status)
-				return ctrl.Result{}, err
+
+				util.StartSync(r.ClusterName, req.NamespacedName, obj)
+
+			} else {
+
+				util.RemoveSyncworker(req.NamespacedName)
 			}
 
 			return ctrl.Result{}, nil
@@ -94,22 +93,17 @@ func (r *FederatedObjectReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 		// member cluster
 
-		if obj.Status == nil {
+		if obj.Status != nil {
 			return ctrl.Result{}, nil
 		}
 
-		clusters := obj.Spec.Placement.Clusters
-		for i, c := range clusters {
-			if c.Name == r.ClusterName && obj.Status[i].Timestamp.IsZero() {
-				obj.Status[i].Timestamp = metav1.Now()
+		obj.Status = make([]typesv1beta1.ClusterStatus, 1)
+		obj.Status[0].Name = r.ClusterName
+		obj.Status[0].Timestamp = metav1.Now()
 
-				err := r.Status().Update(ctx, obj)
-				logger.Info("Update timestamp", "cluster", r.ClusterName)
-				return ctrl.Result{}, err
-			}
-		}
-
-		return ctrl.Result{}, nil
+		err := r.Status().Update(ctx, obj)
+		logger.Info("Update timestamp", "cluster", r.ClusterName)
+		return ctrl.Result{}, err
 	}
 }
 

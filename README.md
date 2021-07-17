@@ -45,6 +45,12 @@ kind delete cluster --name cluster-2
 kind delete cluster --name cluster-3
 ```
 
+## TODO
+- [Finalizers](https://book.kubebuilder.io/reference/using-finalizers.html)
+- [Event filter](https://stuartleeks.com/posts/kubebuilder-event-filters-part-2-update)
+- [Http client](https://www.loginradius.com/blog/async/tune-the-go-http-client-for-high-performance)
+- [Leader election]()
+
 ## Develop
 ```
 ## Init project
@@ -71,13 +77,11 @@ kubectl --context kind-cluster-1 apply -f config/crd/bases/types.kubefed.io_fede
 kubectl --context kind-cluster-2 apply -f config/crd/bases/types.kubefed.io_federatedobjects.yaml
 kubectl --context kind-cluster-3 apply -f config/crd/bases/types.kubefed.io_federatedobjects.yaml
 
-kubectl --context kind-cluster-1 apply -f config/samples/types_v1beta1_federatedobject.yaml
-
-kubectl --context kind-cluster-1 -n test delete federatedobjects.types.kubefed.io federatedobject-1
+kubectl --context kind-cluster-fed apply -f config/samples/types_v1beta1_federatedobject.yaml
+kubectl --context kind-cluster-fed -n test delete federatedobjects.types.kubefed.io federatedobject-1
 
 
 ./bin/manager --kubeconfig /root/.kube/config --clustername cluster-fed
 ./bin/manager --kubeconfig /root/.kube/cluster-1 --clustername cluster-1
-
 
 ```

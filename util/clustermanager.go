@@ -43,8 +43,8 @@ const (
 )
 
 var (
-	clusterClients map[string]ctrlclient.Client
-	lock           sync.RWMutex
+	clusterClients map[string]ctrlclient.Client = make(map[string]ctrlclient.Client)
+	clientLock     sync.RWMutex
 )
 
 func buildClusterConfig(
@@ -118,14 +118,14 @@ func NewManager(
 func AddclusterClient(
 	clusterName string,
 	client ctrlclient.Client) {
-	lock.Lock()
+	clientLock.Lock()
 	clusterClients[clusterName] = client
-	lock.Unlock()
+	clientLock.Unlock()
 }
 
 func GetclusterClient(clusterName string) ctrlclient.Client {
-	lock.RLock()
-	defer lock.RUnlock()
+	clientLock.RLock()
+	defer clientLock.RUnlock()
 	if client, ok := clusterClients[clusterName]; ok {
 		return client
 	} else {
