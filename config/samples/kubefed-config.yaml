@@ -1,0 +1,7 @@
+apiVersion: core.kubefed.io/v1beta1
+kind: KubeFedConfig
+metadata:
+  name: kubefed
+  namespace: test
+spec:
+  scope: "Namespaced"

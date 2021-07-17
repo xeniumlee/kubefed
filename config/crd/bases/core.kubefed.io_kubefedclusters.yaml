@@ -16,10 +16,18 @@ spec:
     singular: kubefedcluster
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: age
+      type: date
+    - jsonPath: .status.conditions[?(@.type=='Ready')].status
+      name: ready
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
-        description: KubeFedCluster is the Schema for the kubefedclusters API
+        description: KubeFedCluster configures KubeFed to be aware of a Kubernetes
+          cluster and encapsulates the details necessary to communicate with the cluster.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -36,14 +44,42 @@ spec:
           spec:
             description: KubeFedClusterSpec defines the desired state of KubeFedCluster
             properties:
-              foo:
-                description: Foo is an example field of KubeFedCluster. Edit kubefedcluster_types.go
-                  to remove/update
+              apiEndpoint:
+                description: The API endpoint of the member cluster. This can be a
+                  hostname, hostname:port, IP or IP:port.
                 type: string
+              caBundle:
+                description: CABundle contains the certificate authority information.
+                format: byte
+                type: string
+              disabledTLSValidations:
+                description: DisabledTLSValidations defines a list of checks to ignore
+                  when validating the TLS connection to the member cluster.  This
+                  can be any of *, SubjectName, or ValidityPeriod. If * is specified,
+                  it is expected to be the only option in list.
+                items:
+                  type: string
+                type: array
+              proxyURL:
+                description: ProxyURL allows to set proxy URL for the cluster.
+                type: string
+              secretRef:
+                description: Name of the secret containing the token required to access
+                  the member cluster. The secret needs to exist in the same namespace
+                  as the control plane and should have a "token" key.
+                properties:
+                  name:
+                    description: Name of a secret within the enclosing namespace
+                    type: string
+                required:
+                - name
+                type: object
+            required:
+            - apiEndpoint
+            - secretRef
             type: object
-          status:
-            description: KubeFedClusterStatus defines the observed state of KubeFedCluster
-            type: object
+        required:
+        - spec
         type: object
     served: true
     storage: true

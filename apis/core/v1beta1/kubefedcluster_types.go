@@ -1,5 +1,5 @@
 /*
-Copyright 2021.
+Copyright 2018 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,37 +20,65 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+type TLSValidation string
+
+const (
+	TLSAll            TLSValidation = "*"
+	TLSSubjectName    TLSValidation = "SubjectName"
+	TLSValidityPeriod TLSValidation = "ValidityPeriod"
+)
 
 // KubeFedClusterSpec defines the desired state of KubeFedCluster
 type KubeFedClusterSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// The API endpoint of the member cluster. This can be a hostname,
+	// hostname:port, IP or IP:port.
+	APIEndpoint string `json:"apiEndpoint"`
 
-	// Foo is an example field of KubeFedCluster. Edit kubefedcluster_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// CABundle contains the certificate authority information.
+	// +optional
+	CABundle []byte `json:"caBundle,omitempty"`
+
+	// Name of the secret containing the token required to access the
+	// member cluster. The secret needs to exist in the same namespace
+	// as the control plane and should have a "token" key.
+	SecretRef LocalSecretReference `json:"secretRef"`
+
+	// DisabledTLSValidations defines a list of checks to ignore when validating
+	// the TLS connection to the member cluster.  This can be any of *, SubjectName, or ValidityPeriod.
+	// If * is specified, it is expected to be the only option in list.
+	// +optional
+	DisabledTLSValidations []TLSValidation `json:"disabledTLSValidations,omitempty"`
+
+	// ProxyURL allows to set proxy URL for the cluster.
+	// +optional
+	ProxyURL string `json:"proxyURL"`
 }
 
-// KubeFedClusterStatus defines the observed state of KubeFedCluster
-type KubeFedClusterStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+// LocalSecretReference is a reference to a secret within the enclosing
+// namespace.
+type LocalSecretReference struct {
+	// Name of a secret within the enclosing
+	// namespace
+	Name string `json:"name"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:printcolumn:name=age,type=date,JSONPath=.metadata.creationTimestamp
+// +kubebuilder:printcolumn:name=ready,type=string,JSONPath=.status.conditions[?(@.type=='Ready')].status
+// +kubebuilder:resource:path=kubefedclusters
+// +kubebuilder:subresource:status
 
-// KubeFedCluster is the Schema for the kubefedclusters API
+// KubeFedCluster configures KubeFed to be aware of a Kubernetes
+// cluster and encapsulates the details necessary to communicate with
+// the cluster.
 type KubeFedCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   KubeFedClusterSpec   `json:"spec,omitempty"`
-	Status KubeFedClusterStatus `json:"status,omitempty"`
+	Spec KubeFedClusterSpec `json:"spec"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // KubeFedClusterList contains a list of KubeFedCluster
 type KubeFedClusterList struct {
