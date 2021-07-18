@@ -18,6 +18,7 @@ package util
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -25,116 +26,130 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type State int
+type state int
 
 const (
-	ChanSize         = 10
-	SyncPeriod       = time.Second * 30
-	Init       State = iota
-	Created
-	Updated
+	chanSize         = 10
+	syncPeriod       = time.Second * 40
+	created    state = iota
+	dispatched
+	updated
 )
 
 var (
-	workerMap  map[ctrlclient.ObjectKey]*SyncWorker = make(map[ctrlclient.ObjectKey]*SyncWorker)
+	workerMap  map[ctrlclient.ObjectKey]*syncWorker = make(map[ctrlclient.ObjectKey]*syncWorker)
 	workerlock sync.RWMutex
 )
 
-type NotifyObj struct {
+type notifyObj struct {
 	obj         *typesv1beta1.FederatedObject
 	clusterName string
 }
 
-type SyncWorker struct {
-	notifyChan chan NotifyObj
-	state      State
+type syncWorker struct {
+	notifyChan chan notifyObj
 	objMap     map[string]*typesv1beta1.FederatedObject
-	status     []typesv1beta1.ClusterStatus
-	targets    int
+	statusList []typesv1beta1.ClusterStatus
+	key        ctrlclient.ObjectKey
+	state      state
+	dispatched int
 }
 
-func (w *SyncWorker) Run() {
+func (w *syncWorker) run() {
 	for {
 		select {
 		case msg := <-w.notifyChan:
 			switch w.state {
-			case Init:
+			case created:
 				if msg.clusterName == FederationClusterName &&
 					msg.obj.Status == nil {
 
-					obj := msg.obj
+					obj := msg.obj.DeepCopy()
+					w.dispatched = 0
 					for _, cluster := range obj.Spec.Placement.Clusters {
 						if client := GetclusterClient(cluster.Name); client != nil {
+							obj.ObjectMeta.ResourceVersion = ""
 							if err := client.Create(context.TODO(), obj); err == nil {
-								w.targets++
+								w.dispatched++
+							} else {
+								fmt.Println(err)
 							}
 						}
 					}
 					w.objMap[msg.clusterName] = obj
-					w.status = make([]typesv1beta1.ClusterStatus, w.targets)
-					w.state = Created
+					w.state = dispatched
+					fmt.Println("Dispatched", w.dispatched)
 				}
 
-			case Created:
-				if msg.clusterName != FederationClusterName {
-					// Created or Timestamp updated
-					obj := msg.obj
-					w.objMap[msg.clusterName] = obj
-					if obj.Status != nil && len(obj.Status) == 1 {
-						w.status = append(w.status, obj.Status[0])
-						if len(w.status) == w.targets {
+			case dispatched:
+				if msg.clusterName != FederationClusterName &&
+					msg.obj.Status != nil {
 
-							// Update member cluster
+					obj := msg.obj.DeepCopy()
+					w.objMap[msg.clusterName] = obj
+
+					// Double check
+					if obj.Status[0].Name == msg.clusterName {
+						w.statusList = append(w.statusList, obj.Status[0])
+
+						if len(w.statusList) == w.dispatched {
+
 							for cluster, o := range w.objMap {
 								if client := GetclusterClient(cluster); client != nil {
-									o.Status = w.status
-									client.Update(context.TODO(), o)
+									o.Status = w.statusList
+									fmt.Println(cluster, o)
+									err := client.Status().Update(context.TODO(), o)
+									fmt.Println(err)
 								}
 							}
-							w.state = Updated
+							w.state = updated
 						}
 					}
 				}
 
-			case Updated:
-				return
+			case updated:
+				fmt.Println("Got an update", msg.clusterName, msg.obj.Name)
 			}
-		case <-time.After(SyncPeriod):
+		case <-time.After(syncPeriod):
+			workerlock.Lock()
+			defer workerlock.Unlock()
+			delete(workerMap, w.key)
+			fmt.Println("Ending loop")
 			return
 		}
 	}
 }
 
-func (w *SyncWorker) Notify(clusterName string, obj *typesv1beta1.FederatedObject) {
-	w.notifyChan <- NotifyObj{clusterName: clusterName, obj: obj}
+func (w *syncWorker) notify(clusterName string, obj *typesv1beta1.FederatedObject) {
+	w.notifyChan <- notifyObj{clusterName: clusterName, obj: obj}
 }
 
-func StartSync(clusterName string, key ctrlclient.ObjectKey, obj *typesv1beta1.FederatedObject) {
-	w := &SyncWorker{
-		notifyChan: make(chan NotifyObj, ChanSize),
-		state:      Init,
-		objMap:     make(map[string]*typesv1beta1.FederatedObject),
-	}
+func TryStartSync(clusterName string, key ctrlclient.ObjectKey, obj *typesv1beta1.FederatedObject) {
 	workerlock.Lock()
-	workerMap[key] = w
-	workerlock.Unlock()
+	defer workerlock.Unlock()
+	if _, ok := workerMap[key]; ok {
+		fmt.Println("Already Started")
+		return
+	}
 
-	go w.Run()
-	w.Notify(clusterName, obj)
+	w := &syncWorker{
+		notifyChan: make(chan notifyObj, chanSize),
+		objMap:     make(map[string]*typesv1beta1.FederatedObject),
+		state:      created,
+		key:        key,
+	}
+
+	workerMap[key] = w
+	go w.run()
+	w.notify(clusterName, obj)
+	fmt.Println("TryStartSync")
 }
 
-func GetSyncworker(key ctrlclient.ObjectKey) *SyncWorker {
+func TryNotify(clusterName string, key ctrlclient.ObjectKey, obj *typesv1beta1.FederatedObject) {
 	workerlock.RLock()
 	defer workerlock.RUnlock()
 	if w, ok := workerMap[key]; ok {
-		return w
-	} else {
-		return nil
+		w.notify(clusterName, obj)
+		fmt.Println("TryNotify")
 	}
-}
-
-func RemoveSyncworker(key ctrlclient.ObjectKey) {
-	workerlock.Lock()
-	defer workerlock.Unlock()
-	delete(workerMap, key)
 }

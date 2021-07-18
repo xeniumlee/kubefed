@@ -59,7 +59,7 @@ func (r *KubeFedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	mgr, err := util.NewManager(obj, r.Namespace, r.Client, r.Scheme)
 	if err != nil {
-		logger.Error(err, "Unable to create manager", "cluster", obj.ClusterName)
+		logger.Error(err, "Unable to create manager", "cluster", obj.Name)
 		return ctrl.Result{}, err
 	}
 
@@ -69,9 +69,9 @@ func (r *KubeFedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		Client:            mgr.GetClient(),
 		Scheme:            mgr.GetScheme(),
 		ClusterName:       util.FederationClusterName,
-		TargetClusterName: obj.ClusterName,
+		TargetClusterName: obj.Name,
 	}).SetupWithManager(mgr); err != nil {
-		logger.Error(err, "Unable to create controller", "cluster", obj.ClusterName)
+		logger.Error(err, "Unable to create controller", "cluster", obj.Name)
 		return ctrl.Result{}, err
 	}
 

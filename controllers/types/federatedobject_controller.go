@@ -60,46 +60,28 @@ func (r *FederatedObjectReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	if r.ClusterName == util.FederationClusterName {
-
 		// federation cluster
-
-		if r.TargetClusterName != "" {
-
+		if r.TargetClusterName != "" && obj.Status != nil {
 			// watch member cluster
-
-			if worker := util.GetSyncworker(req.NamespacedName); worker != nil {
-				worker.Notify(r.TargetClusterName, obj)
-			}
-
+			util.TryNotify(r.TargetClusterName, req.NamespacedName, obj)
 			return ctrl.Result{}, nil
-
 		} else {
-
 			// watch federation cluster
-
 			if obj.Status == nil {
-
-				util.StartSync(r.ClusterName, req.NamespacedName, obj)
-
-			} else {
-
-				util.RemoveSyncworker(req.NamespacedName)
+				util.TryStartSync(r.ClusterName, req.NamespacedName, obj)
 			}
-
 			return ctrl.Result{}, nil
 		}
-
 	} else {
-
 		// member cluster
-
 		if obj.Status != nil {
 			return ctrl.Result{}, nil
 		}
 
-		obj.Status = make([]typesv1beta1.ClusterStatus, 1)
-		obj.Status[0].Name = r.ClusterName
-		obj.Status[0].Timestamp = metav1.Now()
+		obj.Status = append(obj.Status, typesv1beta1.ClusterStatus{
+			Name:      r.ClusterName,
+			Timestamp: metav1.Now(),
+		})
 
 		err := r.Status().Update(ctx, obj)
 		logger.Info("Update timestamp", "cluster", r.ClusterName)
@@ -111,6 +93,6 @@ func (r *FederatedObjectReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 func (r *FederatedObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&typesv1beta1.FederatedObject{}).
-		WithOptions(controller.Options{MaxConcurrentReconciles: 5}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }

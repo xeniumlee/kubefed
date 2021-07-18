@@ -78,10 +78,21 @@ kubectl --context kind-cluster-2 apply -f config/crd/bases/types.kubefed.io_fede
 kubectl --context kind-cluster-3 apply -f config/crd/bases/types.kubefed.io_federatedobjects.yaml
 
 kubectl --context kind-cluster-fed apply -f config/samples/types_v1beta1_federatedobject.yaml
+
 kubectl --context kind-cluster-fed -n test delete federatedobjects.types.kubefed.io federatedobject-1
+kubectl --context kind-cluster-1 -n test delete federatedobjects.types.kubefed.io federatedobject-1
+kubectl --context kind-cluster-2 -n test delete federatedobjects.types.kubefed.io federatedobject-1
+kubectl --context kind-cluster-3 -n test delete federatedobjects.types.kubefed.io federatedobject-1
+
+kubectl --context kind-cluster-fed -n test get federatedobjects.types.kubefed.io federatedobject-1 -oyaml
+kubectl --context kind-cluster-1 -n test get federatedobjects.types.kubefed.io federatedobject-1 -oyaml
+kubectl --context kind-cluster-2 -n test get federatedobjects.types.kubefed.io federatedobject-1 -oyaml
+kubectl --context kind-cluster-3 -n test get federatedobjects.types.kubefed.io federatedobject-1 -oyaml
 
 
 ./bin/manager --kubeconfig /root/.kube/config --clustername cluster-fed
 ./bin/manager --kubeconfig /root/.kube/cluster-1 --clustername cluster-1
+./bin/manager --kubeconfig /root/.kube/cluster-2 --clustername cluster-2
+./bin/manager --kubeconfig /root/.kube/cluster-3 --clustername cluster-3
 
 ```

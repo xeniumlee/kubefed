@@ -36,10 +36,10 @@ import (
 )
 
 const (
-	KubeAPIQPS   = 20.0
-	KubeAPIBurst = 30
-	TokenKey     = "token"
-	CaCrtKey     = "ca.crt"
+	kubeAPIQPS   = 20.0
+	kubeAPIBurst = 30
+	tokenKey     = "token"
+	caCrtKey     = "ca.crt"
 )
 
 var (
@@ -69,9 +69,9 @@ func buildClusterConfig(
 		return nil, err
 	}
 
-	token, tokenFound := secret.Data[TokenKey]
+	token, tokenFound := secret.Data[tokenKey]
 	if !tokenFound || len(token) == 0 {
-		return nil, errors.Errorf("The secret for cluster %s is missing a non-empty value for %q", clusterName, TokenKey)
+		return nil, errors.Errorf("The secret for cluster %s is missing a non-empty value for %q", clusterName, tokenKey)
 	}
 
 	clusterConfig, err := clientcmd.BuildConfigFromFlags(apiEndpoint, "")
@@ -80,8 +80,8 @@ func buildClusterConfig(
 	}
 	clusterConfig.CAData = cluster.Spec.CABundle
 	clusterConfig.BearerToken = string(token)
-	clusterConfig.QPS = KubeAPIQPS
-	clusterConfig.Burst = KubeAPIBurst
+	clusterConfig.QPS = kubeAPIQPS
+	clusterConfig.Burst = kubeAPIBurst
 
 	if cluster.Spec.ProxyURL != "" {
 		proxyURL, err := url.Parse(cluster.Spec.ProxyURL)
