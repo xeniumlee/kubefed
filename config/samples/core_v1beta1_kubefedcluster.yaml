@@ -1,7 +1,0 @@
-apiVersion: core.kubefed.io/v1beta1
-kind: KubeFedCluster
-metadata:
-  name: kubefedcluster-sample
-spec:
-  # Add fields here
-  foo: bar

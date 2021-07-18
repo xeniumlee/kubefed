@@ -36,8 +36,8 @@ import (
 )
 
 const (
-	kubeAPIQPS   = 20.0
-	kubeAPIBurst = 30
+	kubeAPIQPS   = 100.0
+	kubeAPIBurst = 100
 	tokenKey     = "token"
 	caCrtKey     = "ca.crt"
 )
