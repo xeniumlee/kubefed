@@ -18,11 +18,11 @@ package util
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
 	typesv1beta1 "github.com/xeniumlee/kubefed/apis/types/v1beta1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -30,7 +30,7 @@ type state int
 
 const (
 	chanSize         = 10
-	syncPeriod       = time.Second * 40
+	syncPeriod       = time.Second * 5
 	created    state = iota
 	dispatched
 	updated
@@ -39,6 +39,7 @@ const (
 var (
 	workerMap  map[ctrlclient.ObjectKey]*syncWorker = make(map[ctrlclient.ObjectKey]*syncWorker)
 	workerlock sync.RWMutex
+	log        = ctrl.Log.WithName("sync")
 )
 
 type notifyObj struct {
@@ -63,6 +64,7 @@ func (w *syncWorker) run() {
 			case created:
 				if msg.clusterName == FederationClusterName &&
 					msg.obj.Status == nil {
+					w.objMap[msg.clusterName] = msg.obj
 
 					obj := msg.obj.DeepCopy()
 					w.dispatched = 0
@@ -72,49 +74,51 @@ func (w *syncWorker) run() {
 							if err := client.Create(context.TODO(), obj); err == nil {
 								w.dispatched++
 							} else {
-								fmt.Println(err)
+								log.Error(err, "cluster", cluster.Name)
 							}
 						}
 					}
-					w.objMap[msg.clusterName] = obj
 					w.state = dispatched
-					fmt.Println("Dispatched", w.dispatched)
 				}
-
 			case dispatched:
+				w.objMap[msg.clusterName] = msg.obj
+
 				if msg.clusterName != FederationClusterName &&
-					msg.obj.Status != nil {
+					msg.obj.Status != nil &&
+					msg.obj.Status[0].Name == msg.clusterName {
 
-					obj := msg.obj.DeepCopy()
-					w.objMap[msg.clusterName] = obj
-
-					// Double check
-					if obj.Status[0].Name == msg.clusterName {
-						w.statusList = append(w.statusList, obj.Status[0])
-
-						if len(w.statusList) == w.dispatched {
-
-							for cluster, o := range w.objMap {
-								if client := GetclusterClient(cluster); client != nil {
-									o.Status = w.statusList
-									fmt.Println(cluster, o)
-									err := client.Status().Update(context.TODO(), o)
-									fmt.Println(err)
+					w.statusList = append(w.statusList, msg.obj.Status[0])
+					if len(w.statusList) == w.dispatched {
+						for cluster, o := range w.objMap {
+							if client := GetclusterClient(cluster); client != nil {
+								o.Status = w.statusList
+								if err := client.Status().Update(context.TODO(), o); err != nil {
+									log.Error(err, "cluster", cluster)
 								}
 							}
-							w.state = updated
 						}
+						w.state = updated
 					}
 				}
-
 			case updated:
-				fmt.Println("Got an update", msg.clusterName, msg.obj.Name)
+				delete(w.objMap, msg.clusterName)
 			}
 		case <-time.After(syncPeriod):
 			workerlock.Lock()
 			defer workerlock.Unlock()
 			delete(workerMap, w.key)
-			fmt.Println("Ending loop")
+
+			// Best effort
+			if len(w.statusList) != 0 {
+				for cluster, o := range w.objMap {
+					if client := GetclusterClient(cluster); client != nil {
+						o.Status = w.statusList
+						client.Status().Update(context.TODO(), o)
+					}
+				}
+			}
+
+			log.Info("Status sync completed", "obj", w.key)
 			return
 		}
 	}
@@ -124,32 +128,30 @@ func (w *syncWorker) notify(clusterName string, obj *typesv1beta1.FederatedObjec
 	w.notifyChan <- notifyObj{clusterName: clusterName, obj: obj}
 }
 
-func TryStartSync(clusterName string, key ctrlclient.ObjectKey, obj *typesv1beta1.FederatedObject) {
-	workerlock.Lock()
-	defer workerlock.Unlock()
-	if _, ok := workerMap[key]; ok {
-		fmt.Println("Already Started")
-		return
-	}
-
-	w := &syncWorker{
-		notifyChan: make(chan notifyObj, chanSize),
-		objMap:     make(map[string]*typesv1beta1.FederatedObject),
-		state:      created,
-		key:        key,
-	}
-
-	workerMap[key] = w
-	go w.run()
-	w.notify(clusterName, obj)
-	fmt.Println("TryStartSync")
-}
-
 func TryNotify(clusterName string, key ctrlclient.ObjectKey, obj *typesv1beta1.FederatedObject) {
-	workerlock.RLock()
-	defer workerlock.RUnlock()
-	if w, ok := workerMap[key]; ok {
-		w.notify(clusterName, obj)
-		fmt.Println("TryNotify")
+	if clusterName == FederationClusterName {
+		workerlock.Lock()
+		defer workerlock.Unlock()
+
+		if w, ok := workerMap[key]; ok {
+			w.notify(clusterName, obj)
+		} else {
+			w := &syncWorker{
+				notifyChan: make(chan notifyObj, chanSize),
+				objMap:     make(map[string]*typesv1beta1.FederatedObject),
+				state:      created,
+				key:        key,
+			}
+			workerMap[key] = w
+			go w.run()
+			w.notify(clusterName, obj)
+		}
+	} else {
+		workerlock.RLock()
+		defer workerlock.RUnlock()
+
+		if w, ok := workerMap[key]; ok {
+			w.notify(clusterName, obj)
+		}
 	}
 }

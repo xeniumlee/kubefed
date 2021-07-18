@@ -23,16 +23,16 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 
-	corev1beta1 "github.com/xeniumlee/kubefed/apis/core/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	restclient "k8s.io/client-go/rest"
-
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
+
+	corev1beta1 "github.com/xeniumlee/kubefed/apis/core/v1beta1"
 )
 
 const (

@@ -19,15 +19,14 @@ package types
 import (
 	"context"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	typesv1beta1 "github.com/xeniumlee/kubefed/apis/types/v1beta1"
 	"github.com/xeniumlee/kubefed/util"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // FederatedObjectReconciler reconciles a FederatedObject object
@@ -52,7 +51,7 @@ type FederatedObjectReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
 func (r *FederatedObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	//logger := log.FromContext(ctx)
 
 	obj := &typesv1beta1.FederatedObject{}
 	if err := r.Get(ctx, req.NamespacedName, obj); err != nil {
@@ -61,17 +60,14 @@ func (r *FederatedObjectReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	if r.ClusterName == util.FederationClusterName {
 		// federation cluster
-		if r.TargetClusterName != "" && obj.Status != nil {
+		if r.TargetClusterName != "" {
 			// watch member cluster
 			util.TryNotify(r.TargetClusterName, req.NamespacedName, obj)
-			return ctrl.Result{}, nil
 		} else {
 			// watch federation cluster
-			if obj.Status == nil {
-				util.TryStartSync(r.ClusterName, req.NamespacedName, obj)
-			}
-			return ctrl.Result{}, nil
+			util.TryNotify(r.ClusterName, req.NamespacedName, obj)
 		}
+		return ctrl.Result{}, nil
 	} else {
 		// member cluster
 		if obj.Status != nil {
@@ -84,7 +80,6 @@ func (r *FederatedObjectReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		})
 
 		err := r.Status().Update(ctx, obj)
-		logger.Info("Update timestamp", "cluster", r.ClusterName)
 		return ctrl.Result{}, err
 	}
 }
