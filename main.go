@@ -57,13 +57,15 @@ func init() {
 func main() {
 	var clusterName string
 	var namespace string
+	var maxConcurrentReconciles int
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
 	flag.StringVar(&clusterName, "clustername", "", "The cluster name registered to fed cluster")
 	flag.StringVar(&namespace, "namespace", "test", "The namespace to watch.")
+	flag.IntVar(&maxConcurrentReconciles, "max-concurrent-reconciles", 1, "Max concurrent reconciles.")
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", "0", "The address the probe endpoint binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -90,9 +92,10 @@ func main() {
 	}
 
 	if err = (&typescontrollers.FederatedObjectReconciler{
-		Client:      mgr.GetClient(),
-		Scheme:      mgr.GetScheme(),
-		ClusterName: clusterName,
+		Client:                  mgr.GetClient(),
+		Scheme:                  mgr.GetScheme(),
+		MaxConcurrentReconciles: maxConcurrentReconciles,
+		ClusterName:             clusterName,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "FederatedObject")
 		os.Exit(1)

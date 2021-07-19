@@ -32,9 +32,10 @@ import (
 // FederatedObjectReconciler reconciles a FederatedObject object
 type FederatedObjectReconciler struct {
 	client.Client
-	Scheme            *runtime.Scheme
-	ClusterName       string
-	TargetClusterName string
+	Scheme                  *runtime.Scheme
+	MaxConcurrentReconciles int
+	ClusterName             string
+	TargetClusterName       string
 }
 
 //+kubebuilder:rbac:groups=types.kubefed.io,resources=federatedobjects,verbs=get;list;watch;create;update;patch;delete
@@ -88,6 +89,6 @@ func (r *FederatedObjectReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 func (r *FederatedObjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&typesv1beta1.FederatedObject{}).
-		WithOptions(controller.Options{MaxConcurrentReconciles: 5}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles}).
 		Complete(r)
 }

@@ -19,17 +19,24 @@ kind create cluster --name cluster-3 --config=test/kind-config.yaml
 
 ## Install
 ```
-helm upgrade -i kubefed ./charts --create-namespace -n test --kube-context kind-cluster-fed --set cluster=cluster-fed
-helm upgrade -i kubefed ./charts --create-namespace -n test --kube-context kind-cluster-1 --set cluster=cluster-1
-helm upgrade -i kubefed ./charts --create-namespace -n test --kube-context kind-cluster-2 --set cluster=cluster-2
-helm upgrade -i kubefed ./charts --create-namespace -n test --kube-context kind-cluster-3 --set cluster=cluster-3
+make
+cd bin
+docker build -t kubefed:0.0.1 -f ../Dockerfile.prebuilt .
+kind load docker-image kubefed:0.0.1 --name cluster-fed
+kind load docker-image kubefed:0.0.1 --name cluster-1
+kind load docker-image kubefed:0.0.1 --name cluster-2
+kind load docker-image kubefed:0.0.1 --name cluster-3
+
+docker exec -it cluster-3-control-plane crictl images
+
+helm upgrade -i kubefed ./charts --create-namespace -n test --kube-context kind-cluster-fed --set config.cluster=cluster-fed
+helm upgrade -i kubefed ./charts --create-namespace -n test --kube-context kind-cluster-1 --set config.cluster=cluster-1
+helm upgrade -i kubefed ./charts --create-namespace -n test --kube-context kind-cluster-2 --set config.cluster=cluster-2
+helm upgrade -i kubefed ./charts --create-namespace -n test --kube-context kind-cluster-3 --set config.cluster=cluster-3
 ```
 
 ## Setup
 ```
-kubectl --context kind-cluster-fed apply -f test/crd-kubefed-config.yaml
-kubectl --context kind-cluster-fed apply -f test/kubefed-config.yaml
-
 kubefedctl --host-cluster-context kind-cluster-fed join cluster-1 --cluster-context kind-cluster-1 --kubefed-namespace test -v 2
 kubefedctl --host-cluster-context kind-cluster-fed join cluster-2 --cluster-context kind-cluster-2 --kubefed-namespace test -v 2
 kubefedctl --host-cluster-context kind-cluster-fed join cluster-3 --cluster-context kind-cluster-3 --kubefed-namespace test -v 2
@@ -54,9 +61,8 @@ kind delete cluster --name cluster-3
 
 ## TODO
 - [Finalizers](https://book.kubebuilder.io/reference/using-finalizers.html)
-- [Event filter](https://stuartleeks.com/posts/kubebuilder-event-filters-part-2-update)
 - [Http client](https://www.loginradius.com/blog/async/tune-the-go-http-client-for-high-performance)
-- [Leader election]()
+- Reconcile/Retry
 
 ## Develop
 ```

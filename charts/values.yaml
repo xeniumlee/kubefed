@@ -1,0 +1,29 @@
+# Default values for kubefed.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+## Configuration values for kubefed controllermanager deployment.
+##
+controller:
+  replicaCount: 2
+  repository: docker.io/library
+  image: kubefed
+  tag: 0.0.1
+  imagePullPolicy: IfNotPresent
+  forceRedeployment: false
+  env: {}
+  annotations: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+
+config:
+  scope: Namespaced
+  cluster: ""
+  namespace: test
+  maxConcurrentReconciles: 5
+
+commonNodeSelector: {}
+commonTolerations: []
+imagePullSecrets: []
