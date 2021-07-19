@@ -105,9 +105,10 @@ func main() {
 		util.AddclusterClient(clusterName, mgr.GetClient())
 
 		if err = (&corecontrollers.KubeFedClusterReconciler{
-			Client:    mgr.GetClient(),
-			Scheme:    mgr.GetScheme(),
-			Namespace: namespace,
+			Client:                  mgr.GetClient(),
+			Scheme:                  mgr.GetScheme(),
+			MaxConcurrentReconciles: maxConcurrentReconciles,
+			Namespace:               namespace,
 		}).SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "KubeFedCluster")
 			os.Exit(1)

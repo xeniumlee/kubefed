@@ -27,7 +27,7 @@ elif [ "$1" = "list" ]; then
 else
     echo "Starting at $(date)"
     for c in $(eval echo {1..$1}); do
-cat <<EOF | kubectl --context $fedcluster apply -f -
+cat <<EOF | kubectl --context $fedcluster apply -f - &
 apiVersion: types.kubefed.io/v1beta1
 kind: FederatedObject
 metadata:
@@ -40,6 +40,7 @@ spec:
         - name: cluster-2
         - name: cluster-3
 EOF
+      sleep 0.1
     done
 
 fi

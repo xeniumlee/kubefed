@@ -19,7 +19,7 @@ kind create cluster --name cluster-3 --config=test/kind-config.yaml
 
 ## Install
 ```
-make
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o bin/manager main.go
 cd bin
 docker build -t kubefed:0.0.1 -f ../Dockerfile.prebuilt .
 kind load docker-image kubefed:0.0.1 --name cluster-fed
@@ -58,6 +58,9 @@ kind delete cluster --name cluster-1
 kind delete cluster --name cluster-2
 kind delete cluster --name cluster-3
 ```
+
+## Design
+![Design](/test/kubefed.jpg)
 
 ## TODO
 - [Finalizers](https://book.kubebuilder.io/reference/using-finalizers.html)

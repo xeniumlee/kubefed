@@ -39,7 +39,7 @@ spec:
         - --leader-elect
         - --clustername={{ .Values.config.cluster }}
         - --namespace={{ .Values.config.namespace }}
-        - --maxConcurrentReconciles={{ .Values.config.maxConcurrentReconciles }}
+        - --max-concurrent-reconciles={{ .Values.config.maxConcurrentReconciles }}
         image: "{{ .Values.controller.repository }}/{{ .Values.controller.image }}:{{ .Values.controller.tag }}"
         imagePullPolicy: "{{ .Values.controller.imagePullPolicy }}"
         name: controller-manager

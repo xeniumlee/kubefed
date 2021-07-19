@@ -32,8 +32,9 @@ import (
 // KubeFedClusterReconciler reconciles a KubeFedCluster object
 type KubeFedClusterReconciler struct {
 	client.Client
-	Scheme    *runtime.Scheme
-	Namespace string
+	Scheme                  *runtime.Scheme
+	MaxConcurrentReconciles int
+	Namespace               string
 }
 
 //+kubebuilder:rbac:groups=core.kubefed.io,resources=kubefedclusters,verbs=get;list;watch;create;update;patch;delete
@@ -66,10 +67,11 @@ func (r *KubeFedClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	util.AddclusterClient(obj.Name, mgr.GetClient())
 
 	if err = (&typescontrollers.FederatedObjectReconciler{
-		Client:            mgr.GetClient(),
-		Scheme:            mgr.GetScheme(),
-		ClusterName:       util.FederationClusterName,
-		TargetClusterName: obj.Name,
+		Client:                  mgr.GetClient(),
+		Scheme:                  mgr.GetScheme(),
+		MaxConcurrentReconciles: r.MaxConcurrentReconciles,
+		ClusterName:             util.FederationClusterName,
+		TargetClusterName:       obj.Name,
 	}).SetupWithManager(mgr); err != nil {
 		logger.Error(err, "Unable to create controller", "cluster", obj.Name)
 		return ctrl.Result{}, err
